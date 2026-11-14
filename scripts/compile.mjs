@@ -1,0 +1,11 @@
+import fs from 'node:fs';
+import solc from 'solc';
+const source = fs.readFileSync('contracts/SkillTrustRegistry.sol', 'utf8');
+const output = JSON.parse(solc.compile(JSON.stringify({language:'Solidity',sources:{'SkillTrustRegistry.sol':{content:source}},settings:{optimizer:{enabled:true,runs:200},evmVersion:'shanghai',outputSelection:{'*':{'*':['abi','evm.bytecode.object']}}}})));
+for (const error of output.errors || []) console[error.severity === 'error' ? 'error' : 'warn'](error.formattedMessage);
+if (output.errors?.some(e => e.severity === 'error')) process.exit(1);
+const artifact = output.contracts['SkillTrustRegistry.sol'].SkillTrustRegistry;
+fs.mkdirSync('artifacts', {recursive:true});
+fs.writeFileSync('artifacts/SkillTrustRegistry.json', JSON.stringify(artifact, null, 2));
+fs.writeFileSync('src/abi.json', JSON.stringify(artifact.abi, null, 2));
+console.log('Compiled SkillTrustRegistry with Solidity ' + solc.version());

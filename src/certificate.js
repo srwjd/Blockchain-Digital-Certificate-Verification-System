@@ -30,3 +30,15 @@ export function downloadJson(bundle) {
 export const today = () => new Date().toLocaleDateString('en-CA', {timeZone:'Asia/Bangkok'});
 
 export const issuedTimestamp = value => Date.parse(value+'T00:00:00+07:00')/1000;
+
+export function payloadMatchesRecord(payload, record) {
+  try {
+    validatePayload(payload);
+    return payloadHash(payload) === record.payloadHash &&
+      refId(payload.reference) === record.id &&
+      refId(payload.courseCode) === record.courseId &&
+      payload.recipientWallet.toLowerCase() === record.recipient.toLowerCase() &&
+      payload.documentHash.toLowerCase() === record.documentHash.toLowerCase() &&
+      issuedTimestamp(payload.issuedOn) === Number(record.issuedOn);
+  } catch { return false; }
+}

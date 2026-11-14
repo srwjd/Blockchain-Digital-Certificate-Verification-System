@@ -9,7 +9,7 @@
     "preview": "vite preview --host 0.0.0.0",
     "compile": "node scripts/compile.mjs",
     "test": "node --test tests/*.test.mjs",
-    "check": "node --check src/app.js && node --check src/service.js && node --check src/certificate.js"
+    "check": "node --check src/app.js && node --check src/service.js && node --check src/certificate.js && node --check src/wallet.js"
   },
   "dependencies": {
     "ethers": "6.16.0",

@@ -1,12 +1,14 @@
 import { BrowserProvider, JsonRpcProvider, Contract, isAddress, ZeroAddress } from 'ethers';
 import abi from './abi.json';
 import { makePayload, payloadHash, refId, ZERO_HASH, today, validatePayload, issuedTimestamp } from './certificate.js';
+import { DEMO_ACCOUNTS, requestWalletAccounts, selectWalletAccount, demoRoles } from './wallet.js';
+export { DEMO_ACCOUNTS };
 const STORAGE='skilltrust-demo-v1';
 const BUNDLES='skilltrust-private-bundles-v1';
 export const DEMO_WALLET='0x1111111111111111111111111111111111111111';
 export let config;
 export let account='';
-let browserProvider;
+let connecting = false;
 const readBundles=()=>JSON.parse(localStorage.getItem(BUNDLES)||'{}');
 export const getBundle=id=>readBundles()[id] || null;
 export function saveBundle(bundle) { validatePayload(bundle.payload); const all=readBundles(); all[refId(bundle.payload.reference)]=bundle; localStorage.setItem(BUNDLES,JSON.stringify(all)); }
@@ -36,23 +38,26 @@ function seed() {
 }
 const readDemo=()=>JSON.parse(localStorage.getItem(STORAGE));
 const writeDemo=value=>localStorage.setItem(STORAGE,JSON.stringify(value));
-export async function connect() {
-  if(isDemo()){account=DEMO_WALLET;return account;}
-  if(!window.ethereum)throw Error('กรุณาติดตั้ง MetaMask หรือเปิดเว็บด้วย Wallet browser');
-  browserProvider=new BrowserProvider(window.ethereum);
-  await browserProvider.send('eth_requestAccounts',[]);
-  const network=await browserProvider.getNetwork();
-  if(Number(network.chainId)!==config.chainId){
-    await window.ethereum.request({method:'wallet_switchEthereumChain',params:[{chainId:'0xaa36a7'}]});
-    browserProvider=new BrowserProvider(window.ethereum);
-  }
-  account=await (await browserProvider.getSigner()).getAddress();return account;
+export async function walletAccounts(requestSelection = false) {
+  return requestWalletAccounts(window.ethereum, { requestSelection });
 }
-export function disconnect(){account='';browserProvider=null;}
+export async function connect(selectedAccount) {
+  if(isDemo()){
+    const selected=DEMO_ACCOUNTS.find(a=>a.address.toLowerCase()===selectedAccount?.toLowerCase());
+    if(!selected)throw Error('กรุณาเลือกบัญชีทดลอง');
+    account=selected.address;return account;
+  }
+  account='';
+  connecting=true;
+  try {account=await selectWalletAccount(window.ethereum,selectedAccount,config.chainId);return account;}
+  finally {connecting=false;}
+}
+export function disconnect(){account='';}
 export function onWalletChange(callback) {
   if(!window.ethereum?.on)return;
-  window.ethereum.on('accountsChanged',()=>{disconnect();callback();});
-  window.ethereum.on('chainChanged',()=>{disconnect();callback();});
+  const changed=()=>{if(isDemo()||connecting)return;disconnect();callback();};
+  window.ethereum.on('accountsChanged',changed);
+  window.ethereum.on('chainChanged',changed);
 }
 async function registry(write=false){
   if(!isAddress(config.contractAddress)||config.contractAddress===ZeroAddress)throw Error('ตั้งค่า Contract Address ของ Sepolia ก่อนใช้งาน');
@@ -60,7 +65,7 @@ async function registry(write=false){
     if(!account)throw Error('กรุณาเชื่อมต่อ Wallet ก่อน');
     const provider=new BrowserProvider(window.ethereum);const network=await provider.getNetwork();
     if(Number(network.chainId)!==config.chainId)throw Error('กรุณาเปลี่ยนเครือข่ายเป็น Sepolia');
-    const signer=await provider.getSigner();
+    const signer=await provider.getSigner(account);
     if((await signer.getAddress()).toLowerCase()!==account.toLowerCase())throw Error('บัญชี Wallet เปลี่ยนแล้ว กรุณาเชื่อมต่อใหม่');
     return new Contract(config.contractAddress,abi,signer);
   }
@@ -72,7 +77,7 @@ async function registry(write=false){
 }
 export async function roles(){
   if(!account)return {owner:false,admin:false,issuer:false};
-  if(isDemo())return {owner:true,admin:true,issuer:true};
+  if(isDemo())return demoRoles(account,readDemo());
   const c=await registry();const [owner,admin,issuer]=await Promise.all([c.owner(),c.admins(account),c.issuers(account)]);
   return {owner:owner.toLowerCase()===account.toLowerCase(),admin,issuer:admin||issuer};
 }
@@ -126,6 +131,7 @@ export async function revoke(id){
 }
 export async function setRole(address,role,enabled){
   if(!isAddress(address)||address===ZeroAddress)throw Error('Wallet Address ไม่ถูกต้อง');
+  if(isDemo()&&role==='admin'&&address.toLowerCase()===DEMO_WALLET.toLowerCase())throw Error('เปลี่ยนสิทธิ์ Admin ของ Owner เริ่มต้นไม่ได้');
   const permissions=await roles();if(role==='admin'?!permissions.owner:!permissions.admin)throw Error('บัญชีนี้ไม่มีสิทธิ์จัดการบทบาท');
   if(isDemo()){const d=readDemo(),key=role==='admin'?'admins':'issuers';d[key]=d[key].filter(a=>a.toLowerCase()!==address.toLowerCase());if(enabled)d[key].push(address);writeDemo(d);return;}
   const c=await registry(true);return (await c[role==='admin'?'setAdmin':'setIssuer'](address,enabled)).wait();

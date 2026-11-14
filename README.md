@@ -1,4 +1,9 @@
 # SkillTrust Academy — Blockchain Digital Certificate Verification System
+# สมาชิก
+# 66012968	สิราวรรณ จันแดง
+# 66048395	อารยา โฆษิตไกร
+# 66080904	กันต์ณิษา อินตรา
+# 66085170	ศิรินทร์ จันทร์ทนต์
 
 ระบบออกและตรวจสอบใบรับรองดิจิทัลตามโจทย์ที่ 3 มีหน้าบ้าน หน้าจัดการระบบ และส่วนหลังบ้านเป็น Ethereum Smart Contract สำหรับ deploy ผ่าน Remix IDE
 

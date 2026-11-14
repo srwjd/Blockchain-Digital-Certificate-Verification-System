@@ -1,6 +1,6 @@
 {
-  "mode": "demo",
+  "mode": "sepolia",
   "chainId": 11155111,
-  "contractAddress": "",
+  "contractAddress": "0xDbb57Dd79D1555Ae151629c6B6d912DfF82D2742",
   "rpcUrl": "https://ethereum-sepolia-rpc.publicnode.com"
 }
